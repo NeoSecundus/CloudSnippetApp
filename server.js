@@ -107,6 +107,10 @@ class PSQL_DB {
                 body.language, body.code, id]
         );
     }
+
+    deleteSnippet(id) {
+        return this.connection.query("DELETE FROM snippets WHERE id = $1", [id]);
+    }
 }
 
 /** Class implementing the ReST API */
@@ -172,6 +176,21 @@ class SnippetAPI {
         }
     }
 
+    async deleteSnippet() {
+        var result = null;
+
+        try {
+            result = await db.deleteSnippet(req.params.id);
+            if (result.rowCount == 0) 
+                res.json({ "error": "delete snippet failed!" });
+            else
+                res.json({"res": "success"});
+        } catch (error) {
+            console.log(JSON.stringify(error));
+            res.status(500).json({ "error": "database access error" });
+        }
+    }
+
     /** Create an Example ReST API 
      * @param {number} port - port number to listen
      * @param {string} prefix - resource path prefix
@@ -194,7 +213,7 @@ class SnippetAPI {
         // Select message by id
         this.app.get(this.prefix + '/:id', this.getById);
         this.app.put(this.prefix + '/:id', this.updateSnippet);
-        this.app.delete(this.prefix + '/:id', TODO);
+        this.app.delete(this.prefix + '/:id', this.deleteSnippet);
         this.app.get(this.prefix + '?:attribute=:value', this.getByTag);
         this.app.post(this.prefix, this.addSnippet)
 
