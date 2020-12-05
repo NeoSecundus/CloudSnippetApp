@@ -1,26 +1,28 @@
 # Get snippet 0
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/0
+curl http://127.0.0.1:8080/snippets/0
 
 # Get snippet with tag "demo"
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets?tag=demo
+curl http://127.0.0.1:8080/snippets/?tag=demo
 
 # Add snippet
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets \
--d '{"name": "TEST", "description": "This is a test", \
-"author": "NeoSecundus", "language": "bash", \
-"for i in {0..10}; do echo -n 'Hello!'; done"}' -X POST
+curl -H "Content-Type: application/json" http://127.0.0.1:8080/snippets \
+-X POST -d '{"name": "TEST", "description": "This is a test",
+"author": "NeoSecundus", "language": "bash",
+"code": "for i in {0..10}; do echo -n 'Hello!'; done",
+"tags": ["test", "demo", "hello"]}'
 
 # Get new snippet
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/1
+curl http://127.0.0.1:8080/snippets/1
 
 # Update snippet
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/0 \
--d '{"name": "demo", "description": "Just a demo", \
-"author": "Teuschl", "language": "python", \
+curl -H "Content-Type: application/json" \
+http://127.0.0.1:8080/snippets/0 \
+-d '{"name": "demo", "description": "Just a demo", 
+"author": "Teuschl", "language": "python", "code":
 "print(\"This is an updated demo!\")"}' -X PUT
 
 # Get new snippet
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/0
+curl http://127.0.0.1:8080/snippets/0
 
 # Delete snippet
-curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/1 -X DELETE
+curl http://127.0.0.1:8080/snippets/1 -X DELETE
