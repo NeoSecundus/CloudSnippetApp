@@ -9,7 +9,7 @@
 // Get default settings from environment variables
 const SSL = process.env.SSL || "false";
 const SERVER_PORT = process.env.EXAMPLE_SERVICE_PORT || process.env.PORT || 8080; // PORT environement variable provided by Heroku
-const SERVER_PREFIX = process.env.EXAMPLE_SERVICE_PREFIX || "/example";
+const SERVER_PREFIX = process.env.EXAMPLE_SERVICE_PREFIX || "/snippets";
 const DB_URL = process.env.EXAMPLE_DB_URL || process.env.DATABASE_URL || "postgres://example:keines@127.0.0.1:5432/example";
 
 /** Postgres database access functions objects */
@@ -54,32 +54,118 @@ class PSQL_DB {
         });
     }
 
-    /** Get message with given id
-     * @param {id} id - id of message
-     * @returns {Promise} - Promise for the message query
-     */
-    dbGetMessage(id) {
-        // returns Promise object for message query
-        return this.connection.query('SELECT message FROM messages WHERE id = $1', [id]);
+    getSnippets() {
+        return this.connection.query('SELECT * FROM snippets');
+    }
+
+    getSnippetById(id) {
+        return this.connection.query('SELECT * FROM snippets WHERE id = $1', [id]);
+    }
+
+    getSnippetsByTag(attr, val) {
+        return this.connection.query('SELECT * FROM snippets s INNER JOIN tags t ON fk_table = id WHERE tag LIKE $1', [val]);
+    }
+
+    insertSnippet(body) {
+        let res = this.connection.query(
+            "SELECT max(id) FROM snippets"
+        )
+        let id = null;
+        if (res.rows[0] != undefined) {
+            id = res.rows[0].id + 1;
+        } else {
+            return res;
+        }
+
+        res = this.connection.query(
+            "INSERT INTO snippets VALUES($1, $2, $3, $4, $5, $6)",
+            [id, body.name, body.description, body.author,
+            body.language, body.code]
+        )
+        if (res.rowCount == 0) {
+            return res;
+        }
+
+        for (let tag in body.tags) {
+            res = this.connection.query(
+                "INSERT INTO tags VALUES($1, $2)",
+                [id, tag]
+            )
+
+            if (res.rowCount == 0) {
+                return res;
+            }
+        }
+
+        return res;
+    }
+
+    updateSnippet(id, body) {
+        return this.connection.query(
+            "UPDATE snippets SET name=$1, description=$2, author=$3, language=$4, code=$5 WHERE id = $6", 
+            [body.name, body.description, body.author,
+                body.language, body.code, id]
+        );
     }
 }
 
-/** Class implementing the ReST Example API */
-class ExampleAPI {
+/** Class implementing the ReST API */
+class SnippetAPI {
 
-    /** Get the message specified by the id paramaeter
-     * @param {Object} req - HTTP request as provided by express
-     * @param {Object} res - HTTP request as provided by express
-     */
+    async getByTag(req, res) {
+        var result = null;
+
+        try {
+            result = await db.getSnippetsByTag(req.params.attribute, req.params.value);
+            if (result.rows[0] == undefined) 
+                res.json({ "error": "snippets with tags not found" });
+            else
+                res.json(result.rows[0]);
+        } catch (error) {
+            console.log(JSON.stringify(error));
+            res.status(500).json({ "error": "database access error" });
+        }
+    }
+
     async getById(req, res) {
         var result = null;
 
         try {
-            result = await db.dbGetMessage(req.params.id);
+            result = await db.getSnippetById(req.params.id);
             if (result.rows[0] == undefined) 
-                res.json({ "error": "message id not found" });
+                res.json({ "error": "snippet id not found" });
             else
                 res.json(result.rows[0]);
+        } catch (error) {
+            console.log(JSON.stringify(error));
+            res.status(500).json({ "error": "database access error" });
+        }
+    }
+
+    async updateSnippet(req, res) {
+        var result = null;
+
+        try {
+            result = await db.updateSnippet(req.params.id, req.body);
+            if (result.rowCount == 0) 
+                res.json({ "error": "add snippet failed!" });
+            else
+                res.json({"res": "success"});
+        } catch (error) {
+            console.log(JSON.stringify(error));
+            res.status(500).json({ "error": "database access error" });
+        }
+    }
+
+    async addSnippet(req, res) {
+        var result = null;
+
+        try {
+            result = await db.insertSnippet(req.body);
+            if (result.rowCount == 0) 
+                res.json({ "error": "add snippet failed!" });
+            else
+                res.json({"res": "success"});
         } catch (error) {
             console.log(JSON.stringify(error));
             res.status(500).json({ "error": "database access error" });
@@ -107,6 +193,10 @@ class ExampleAPI {
 
         // Select message by id
         this.app.get(this.prefix + '/:id', this.getById);
+        this.app.put(this.prefix + '/:id', this.updateSnippet);
+        this.app.delete(this.prefix + '/:id', TODO);
+        this.app.get(this.prefix + '?:attribute=:value', this.getByTag);
+        this.app.post(this.prefix, this.addSnippet)
 
         // Listen on given port for requests
         this.server = this.app.listen(this.port, () => {
@@ -114,7 +204,6 @@ class ExampleAPI {
             var port = this.server.address().port;
             console.log("ExampleAPI listening at http://%s:%s%s", host, port, this.prefix);
         });
-
     }
 };
 
@@ -122,4 +211,4 @@ class ExampleAPI {
 var db = new PSQL_DB(DB_URL);
 
 // create ReST Example API
-const api = new ExampleAPI(SERVER_PORT, SERVER_PREFIX, db);
+const api = new SnippetAPI(SERVER_PORT, SERVER_PREFIX, db);
