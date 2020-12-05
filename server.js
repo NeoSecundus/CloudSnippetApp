@@ -146,7 +146,7 @@ class SnippetAPI {
         }
     }
 
-    async getById(req, res) {
+    async getSnippets(req, res) {
         var result = null;
 
         try {
