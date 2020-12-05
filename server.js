@@ -10,7 +10,7 @@
 const SSL = process.env.SSL || "false";
 const SERVER_PORT = process.env.EXAMPLE_SERVICE_PORT || process.env.PORT || 8080; // PORT environement variable provided by Heroku
 const SERVER_PREFIX = process.env.EXAMPLE_SERVICE_PREFIX || "/snippets";
-const DB_URL = process.env.EXAMPLE_DB_URL || process.env.DATABASE_URL || "postgres://example:keines@127.0.0.1:5432/example";
+const DB_URL = process.env.EXAMPLE_DB_URL || process.env.DATABASE_URL || "postgres://snippet:keines@127.0.0.1:5432/snippets";
 
 /** Postgres database access functions objects */
 class PSQL_DB {
@@ -55,15 +55,15 @@ class PSQL_DB {
     }
 
     getSnippets() {
-        return this.connection.query('SELECT * FROM snippets');
+        return this.connection.query("SELECT * FROM snippets");
     }
 
     getSnippetById(id) {
-        return this.connection.query('SELECT * FROM snippets WHERE id = $1', [id]);
+        return this.connection.query("SELECT * FROM snippets WHERE id = $1", [id]);
     }
 
     getSnippetsByTag(attr, val) {
-        return this.connection.query('SELECT * FROM snippets s INNER JOIN tags t ON fk_table = id WHERE tag LIKE $1', [val]);
+        return this.connection.query("SELECT * FROM snippets s INNER JOIN tags t ON fk_table = id WHERE tag LIKE '$1'", [val]);
     }
 
     insertSnippet(body) {
@@ -78,7 +78,7 @@ class PSQL_DB {
         }
 
         res = this.connection.query(
-            "INSERT INTO snippets VALUES($1, $2, $3, $4, $5, $6)",
+            "INSERT INTO snippets VALUES($1, '$2', '$3', '$4', '$5', '$6')",
             [id, body.name, body.description, body.author,
             body.language, body.code]
         )
@@ -88,7 +88,7 @@ class PSQL_DB {
 
         for (let tag in body.tags) {
             res = this.connection.query(
-                "INSERT INTO tags VALUES($1, $2)",
+                "INSERT INTO tags VALUES($1, '$2')",
                 [id, tag]
             )
 
@@ -102,7 +102,7 @@ class PSQL_DB {
 
     updateSnippet(id, body) {
         return this.connection.query(
-            "UPDATE snippets SET name=$1, description=$2, author=$3, language=$4, code=$5 WHERE id = $6", 
+            "UPDATE snippets SET name='$1', description='$2', author='$3', language='$4', code='$5' WHERE id = $6", 
             [body.name, body.description, body.author,
                 body.language, body.code, id]
         );
@@ -136,6 +136,21 @@ class SnippetAPI {
 
         try {
             result = await db.getSnippetById(req.params.id);
+            if (result.rows[0] == undefined) 
+                res.json({ "error": "snippet id not found" });
+            else
+                res.json(result.rows[0]);
+        } catch (error) {
+            console.log(JSON.stringify(error));
+            res.status(500).json({ "error": "database access error" });
+        }
+    }
+
+    async getById(req, res) {
+        var result = null;
+
+        try {
+            result = await db.getSnippets();
             if (result.rows[0] == undefined) 
                 res.json({ "error": "snippet id not found" });
             else
@@ -211,6 +226,7 @@ class SnippetAPI {
         this.app.use(bodyParser.json());
 
         // Select message by id
+        this.app.get(this.prefix, this.getSnippets)
         this.app.get(this.prefix + '/:id', this.getById);
         this.app.put(this.prefix + '/:id', this.updateSnippet);
         this.app.delete(this.prefix + '/:id', this.deleteSnippet);

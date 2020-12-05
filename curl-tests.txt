@@ -1,0 +1,26 @@
+# Get snippet 0
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/0
+
+# Get snippet with tag "demo"
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets?tag=demo
+
+# Add snippet
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets \
+-d '{"name": "TEST", "description": "This is a test", \
+"author": "NeoSecundus", "language": "bash", \
+"for i in {0..10}; do echo -n 'Hello!'; done"}' -X POST
+
+# Get new snippet
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/1
+
+# Update snippet
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/0 \
+-d '{"name": "demo", "description": "Just a demo", \
+"author": "Teuschl", "language": "python", \
+"print(\"This is an updated demo!\")"}' -X PUT
+
+# Get new snippet
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/0
+
+# Delete snippet
+curl snippetapp-myproject.127.0.0.1.nip.io:/snippets/1 -X DELETE
