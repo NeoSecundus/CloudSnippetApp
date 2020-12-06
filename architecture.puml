@@ -1,0 +1,62 @@
+@startuml SnippetApp Architecture
+
+database snippets #adf {
+    object snippets {
+        id: int 
+        name: string
+        description: string
+        author: string
+        language: string
+        code: string
+    }
+
+    object tags {
+        fk_snippet: int <<FK>>
+        tag: string
+    }
+
+    snippets ||-o{ tags
+}
+
+package server #fda {
+    class PSQL_DB {
+        + connection
+        ---
+        + connect()
+        + getSnippets()
+        + getSnippetById(id)
+        + getSnippetsByTag(query)
+        ~ async insertSnippet(body)
+        + updateSnippet(id, body)
+        + deleteSnippet(id)
+    }
+
+    class SnippetAPI {
+        + port: int
+        + prefix: string
+        + db: PSQL_DB
+        + app: Obj
+        + server: Obj
+        ---
+        ~ async getById(req, res)
+        ~ async getSnippets(req, res)
+        ~ async updateSnippet(req, res) 
+        ~ async addSnippet(req, res)
+        ~ async deleteSnippet(req, res)
+    }
+
+    object globals {
+        * SSL: string
+        * SERVER_PORT: int
+        * SERVER_PREFIX: string
+        * DB_URL: string
+    }
+
+    globals -o PSQL_DB
+    SnippetAPI o- globals
+    SnippetAPI -|> PSQL_DB
+}
+
+snippets .. server
+
+@enduml
